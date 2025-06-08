@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ExpertCategory, FeedbackType, Question } from '@/types';
 import { generateAnswer } from '@/lib/gemini';
@@ -40,7 +40,7 @@ const categories: ExpertCategory[] = [
   'Konsultan Pendidikan'
 ];
 
-export default function AskPage() {
+function AskPageContent() {
   const searchParams = useSearchParams();
   const [category, setCategory] = useState<ExpertCategory | ''>('');
   const [question, setQuestion] = useState('');
@@ -249,5 +249,13 @@ export default function AskPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function AskPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AskPageContent />
+    </Suspense>
   );
 } 
