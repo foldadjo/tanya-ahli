@@ -6,10 +6,13 @@ import { getQuestions, deleteQuestion } from '@/lib/storage';
 import { getCategoryIcon } from '@/mockup/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Search } from 'lucide-react';
+import FeedbackButtons from '@/components/FeedbackButtons';
 
 export default function HistoryPage() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadQuestions();
@@ -21,7 +24,7 @@ export default function HistoryPage() {
   };
 
   const handleDelete = (questionId: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the question selection
+    e.stopPropagation();
     if (window.confirm('Apakah Anda yakin ingin menghapus pertanyaan ini?')) {
       deleteQuestion(questionId);
       loadQuestions();
@@ -31,12 +34,25 @@ export default function HistoryPage() {
     }
   };
 
+  const handleFeedbackUpdate = (updatedQuestion: Question) => {
+    loadQuestions();
+    if (selectedQuestion?.id === updatedQuestion.id) {
+      setSelectedQuestion(updatedQuestion);
+    }
+  };
+
   const formatDate = (timestamp: string) => {
     return new Date(timestamp).toLocaleString('id-ID', {
       dateStyle: 'medium',
       timeStyle: 'short'
     });
   };
+
+  const filteredQuestions = questions.filter(q => 
+    q.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    q.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    q.answer.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 md:py-16">
@@ -52,19 +68,34 @@ export default function HistoryPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 md:p-6">
+            <div className="mb-4 md:mb-6">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Cari pertanyaan, kategori, atau jawaban..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-gray-500" />
+              </div>
+            </div>
+
             <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4 md:mb-6">
               Daftar Pertanyaan
             </h2>
-            {questions.length === 0 ? (
+            {filteredQuestions.length === 0 ? (
               <div className="text-center py-8 md:py-12">
-                <div className="text-4xl md:text-6xl mb-3 md:mb-4">📝</div>
+                <div className="text-4xl md:text-6xl mb-3 md:mb-4">🔍</div>
                 <p className="text-gray-500 dark:text-gray-400">
-                  Belum ada riwayat pertanyaan
+                  {questions.length === 0 
+                    ? 'Belum ada riwayat pertanyaan'
+                    : 'Tidak ada hasil yang ditemukan'}
                 </p>
               </div>
             ) : (
               <div className="space-y-3 md:space-y-4">
-                {questions.map((q) => (
+                {filteredQuestions.map((q) => (
                   <div
                     key={q.id}
                     onClick={() => setSelectedQuestion(q)}
@@ -95,11 +126,11 @@ export default function HistoryPage() {
                       </div>
                     </div>
                     <p className="text-gray-800 dark:text-gray-200 line-clamp-2 mb-2 md:mb-3 text-sm md:text-base">{q.question}</p>
-                    {q.feedback && (
-                      <div className="text-right text-xl md:text-2xl">
-                        {q.feedback === 'helpful' ? '👍' : '👎'}
-                      </div>
-                    )}
+                    <FeedbackButtons 
+                      question={q} 
+                      onFeedbackUpdate={handleFeedbackUpdate}
+                      className="mt-2"
+                    />
                   </div>
                 ))}
               </div>
@@ -109,7 +140,7 @@ export default function HistoryPage() {
           {selectedQuestion && (
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 md:p-8">
               <div className="flex justify-between items-center mb-4 md:mb-6">
-                <div className="flex items-center">
+                <div className="flex items-center gap-2">
                   <span className="text-2xl">{getCategoryIcon(selectedQuestion.category)}</span>
                   <h2 className="text-xl md:text-2xl font-semibold text-gray-800 dark:text-gray-100">
                     Detail Pertanyaan
@@ -202,6 +233,16 @@ export default function HistoryPage() {
                       {selectedQuestion.answer}
                     </ReactMarkdown>
                   </div>
+                </div>
+
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                    Apakah jawaban ini membantu?
+                  </h3>
+                  <FeedbackButtons 
+                    question={selectedQuestion} 
+                    onFeedbackUpdate={handleFeedbackUpdate}
+                  />
                 </div>
               </div>
             </div>

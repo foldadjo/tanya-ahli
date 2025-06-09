@@ -4,10 +4,12 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ExpertCategory, FeedbackType, Question } from '@/types';
 import { generateAnswer } from '@/lib/gemini';
-import { saveQuestion, updateQuestionFeedback } from '@/lib/storage';
+import { saveQuestion } from '@/lib/storage';
 import { getCategoryIcon } from '@/mockup/icons';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import FeedbackButtons from '@/components/FeedbackButtons';
+import { recordVisit, recordExpertQuestion } from '@/lib/analytics';
 
 const categories: ExpertCategory[] = [
   'Konsultan Politik',
@@ -46,8 +48,7 @@ function AskPageContent() {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState<FeedbackType | null>(null);
-  const [currentQuestionId, setCurrentQuestionId] = useState<string | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
 
   // Mengambil parameter dari URL saat komponen dimuat
   useEffect(() => {
@@ -62,6 +63,11 @@ function AskPageContent() {
       setQuestion(decodeURIComponent(questionParam));
     }
   }, [searchParams]);
+
+  // Record visit when component mounts
+  useEffect(() => {
+    recordVisit();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +89,10 @@ function AskPageContent() {
         timestamp: new Date().toISOString(),
       };
       saveQuestion(newQuestion);
-      setCurrentQuestionId(newQuestion.id);
+      setCurrentQuestion(newQuestion);
+
+      // Record expert question
+      await recordExpertQuestion(category);
     } catch (error) {
       console.error('Error:', error);
       setAnswer('Maaf, terjadi kesalahan saat memproses pertanyaan Anda.');
@@ -92,11 +101,8 @@ function AskPageContent() {
     }
   };
 
-  const handleFeedback = (type: FeedbackType) => {
-    if (currentQuestionId) {
-      setFeedback(type);
-      updateQuestionFeedback(currentQuestionId, type);
-    }
+  const handleFeedbackUpdate = (updatedQuestion: Question) => {
+    setCurrentQuestion(updatedQuestion);
   };
 
   return (
@@ -227,22 +233,15 @@ function AskPageContent() {
               </ReactMarkdown>
             </div>
             
-            {!feedback && (
-              <div className="mt-6 md:mt-8 flex justify-center space-x-6">
-                <button
-                  onClick={() => handleFeedback('helpful')}
-                  className="text-2xl md:text-3xl hover:scale-125 transition-transform duration-300"
-                  title="Suka"
-                >
-                  👍
-                </button>
-                <button
-                  onClick={() => handleFeedback('not_helpful')}
-                  className="text-2xl md:text-3xl hover:scale-125 transition-transform duration-300"
-                  title="Tidak Suka"
-                >
-                  👎
-                </button>
+            {currentQuestion && (
+              <div className="mt-6 md:mt-8">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                  Apakah jawaban ini membantu?
+                </h3>
+                <FeedbackButtons 
+                  question={currentQuestion} 
+                  onFeedbackUpdate={handleFeedbackUpdate}
+                />
               </div>
             )}
           </div>
