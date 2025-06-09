@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ExpertCategory, FeedbackType, Question } from '@/types';
+import { ExpertCategory, Question } from '@/types';
 import { generateAnswer } from '@/lib/gemini';
 import { saveQuestion } from '@/lib/storage';
 import { getCategoryIcon } from '@/mockup/icons';
